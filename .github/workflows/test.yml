@@ -1,0 +1,21 @@
+name: test.yml
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  unit:
+    name: (TST) Unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "No real tests yet"; sleep 2
+
+  smoke:
+    name: (TST) Smoke-test
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Smoke tests OK"
