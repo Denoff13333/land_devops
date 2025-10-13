@@ -36,8 +36,8 @@ jobs:
         uses: lewagon/wait-on-check-action@v1.3.3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          running-workflow-name: ci_cd.yml      
-          check-regexp: '^\((TST|SEC)\)'        
+          running-workflow-name: ci_cd.yml
+          check-regexp: '^\((TST|SEC)\)'
           allowed-conclusions: success
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -48,21 +48,28 @@ jobs:
     needs: [ gates ]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Decide bump type
         id: decide
         run: |
           BR="${{ github.head_ref }}"
           if [[ "$BR" == hotfix/* ]]; then echo "type=patch" >> $GITHUB_OUTPUT; else echo "type=minor" >> $GITHUB_OUTPUT; fi
+
       - name: Bump version
         id: bump
         run: bash .github/scripts/version.sh "${{ steps.decide.outputs.type }}"
+
       - name: Commit version file
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add version.txt
-          git commit -m "chore: bump version to $(cat version.txt)"
-          git push
+          git commit -m "chore: bump version to $(cat version.txt)" || echo "No changes"
+          git push origin HEAD:${{ github.head_ref }}
 
   changelog:
     if: github.event.action != 'closed'
@@ -72,6 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Prepare changelog
         run: |
@@ -84,8 +92,8 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add CHANGELOG.md
-          git commit -m "docs: update changelog for v$(cat version.txt)"
-          git push
+          git commit -m "docs: update changelog for v$(cat version.txt)" || echo "No changes"
+          git push origin HEAD:${{ github.head_ref }}
 
   build:
     if: github.event.action != 'closed'
@@ -94,6 +102,9 @@ jobs:
     needs: [ changelog ]
     steps:
       - uses: actions/checkout@v4
+      - name: Read version
+        id: ver
+        run: echo "val=$(cat version.txt)" >> "$GITHUB_OUTPUT"
       - name: Login DockerHub
         uses: docker/login-action@v3
         with:
@@ -103,7 +114,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:v$(cat version.txt)
+          tags: ${{ env.DOCKERHUB_REPO }}:v${{ steps.ver.outputs.val }}
 
   notify:
     if: github.event.action != 'closed'
@@ -120,9 +131,8 @@ jobs:
           VER=$(cat version.txt)
           bash .github/scripts/notify_telegram.sh "${{ github.event.repository.name }}" "$VER" "${{ github.event.number }}" "${{ env.DOCKERHUB_REPO }}"
 
-  
   deploy:
-    if: false
+    if: false  
     name: Deploy / PROD
     runs-on: self-hosted
     needs: [ notify ]
