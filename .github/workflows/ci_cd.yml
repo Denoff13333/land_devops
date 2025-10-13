@@ -48,14 +48,21 @@ jobs:
     needs: [ gates ]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Decide bump type
         id: decide
         run: |
           BR="${{ github.head_ref }}"
           if [[ "$BR" == hotfix/* ]]; then echo "type=patch" >> $GITHUB_OUTPUT; else echo "type=minor" >> $GITHUB_OUTPUT; fi
+
       - name: Bump version
         id: bump
         run: bash .github/scripts/version.sh "${{ steps.decide.outputs.type }}"
+
       - name: Commit version file
         run: |
           git config user.name "github-actions"
@@ -72,6 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Prepare changelog
         run: |
@@ -124,7 +132,7 @@ jobs:
           bash .github/scripts/notify_telegram.sh "${{ github.event.repository.name }}" "$VER" "${{ github.event.number }}" "${{ env.DOCKERHUB_REPO }}"
 
   deploy:
-    if: false   # включим позже, когда настроим self-hosted runner
+    if: false   
     name: Deploy / PROD
     runs-on: self-hosted
     needs: [ notify ]
