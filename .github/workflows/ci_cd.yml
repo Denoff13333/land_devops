@@ -47,16 +47,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ gates ]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Decide bump type
         id: decide
         run: |
-          BR="${{ github.head_ref }}"
+          BR="${{ github.event.pull_request.head.ref }}"
           if [[ "$BR" == hotfix/* ]]; then echo "type=patch" >> $GITHUB_OUTPUT; else echo "type=minor" >> $GITHUB_OUTPUT; fi
 
       - name: Bump version
@@ -69,7 +71,7 @@ jobs:
           git config user.email "actions@github.com"
           git add version.txt
           git commit -m "chore: bump version to $(cat version.txt)" || echo "No changes"
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
 
   changelog:
     if: github.event.action != 'closed'
@@ -77,23 +79,27 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ version ]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
           fetch-depth: 0
+
       - name: Prepare changelog
         run: |
           PR=${{ github.event.number }}
-          BR=${{ github.head_ref }}
+          BR=${{ github.event.pull_request.head.ref }}
           VER=$(cat version.txt)
           bash .github/scripts/changelog.sh "$VER" "$BR" "$PR"
+
       - name: Commit changelog
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add CHANGELOG.md
           git commit -m "docs: update changelog for v$(cat version.txt)" || echo "No changes"
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
 
   build:
     if: github.event.action != 'closed'
@@ -131,8 +137,9 @@ jobs:
           VER=$(cat version.txt)
           bash .github/scripts/notify_telegram.sh "${{ github.event.repository.name }}" "$VER" "${{ github.event.number }}" "${{ env.DOCKERHUB_REPO }}"
 
+  
   deploy:
-    if: false   
+    if: false
     name: Deploy / PROD
     runs-on: self-hosted
     needs: [ notify ]
