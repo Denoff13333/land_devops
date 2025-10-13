@@ -1,3 +1,6 @@
+[0.5.0] - 2025.10.13 12:27:00 feature/hello-world2 (PR #2)
+
+- chore: bump version to 0.5.0
 [0.4.0] - 2025.10.13 12:15:44 feature/hello-world2 (PR #2)
 
 - chore: bump version to 0.4.0
