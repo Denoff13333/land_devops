@@ -122,19 +122,26 @@ jobs:
     needs: [ changelog ]
     steps:
       - uses: actions/checkout@v4
+
       - name: Read version
         id: ver
         run: echo "val=$(cat version.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Debug tag
+        run: echo "TAG=${{ vars.DOCKERHUB_REPO }}:v${{ steps.ver.outputs.val }}"
+
       - name: Login DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
+          context: .
           push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:v${{ steps.ver.outputs.val }}
+          tags: ${{ vars.DOCKERHUB_REPO }}:v${{ steps.ver.outputs.val }}
 
   notify:
     if: github.event.action != 'closed'
