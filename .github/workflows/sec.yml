@@ -1,0 +1,27 @@
+name: sec.yml
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  trivy-fs:
+    name: (SEC) / SAST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: fs
+          exit-code: '0'
+          ignore-unfixed: true
+
+  trivy-dockerfile:
+    name: (SEC) / DAST
+    runs-on: ubuntu-lest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: config
+          exit-code: '0'
