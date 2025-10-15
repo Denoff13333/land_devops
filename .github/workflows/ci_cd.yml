@@ -3,7 +3,8 @@ name: ci_cd.yml
 on:
   pull_request:
     branches: [ main ]
-    types: [ opened, synchronize, reopened, ready_for_review, closed ]
+    
+    types: [ opened, synchronize, reopened, ready_for_review, closed, labeled, unlabeled ]
 
 permissions:
   contents: write
@@ -62,11 +63,27 @@ jobs:
           git branch --set-upstream-to="origin/$BR" "$BR" 2>/dev/null || true
           echo "On branch: $(git rev-parse --abbrev-ref HEAD)"
 
-      - name: Decide bump type
+      
+      - name: Decide bump type (by PR labels)
         id: decide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BR='${{ github.event.pull_request.head.ref }}'
-          if [[ "$BR" == hotfix/* ]]; then echo "type=patch" >> $GITHUB_OUTPUT; else echo "type=minor" >> $GITHUB_OUTPUT; fi
+          PR=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+
+          # читаем метки у PR через gh api
+          LABELS=$(gh api repos/$REPO/issues/$PR/labels --jq '.[].name' | tr '\n' ' ')
+          echo "PR labels: $LABELS"
+
+          if echo "$LABELS" | grep -qw minor ; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
+          elif echo "$LABELS" | grep -qw patch ; then
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          else
+            echo "ERROR: Добавь к PR одну из меток: 'minor' или 'patch'."
+            exit 1
+          fi
 
       - name: Bump version
         id: bump
@@ -123,7 +140,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      
       - name: Read & sanitize version
         id: ver
         run: |
@@ -131,7 +147,6 @@ jobs:
           echo "val=$VER" >> "$GITHUB_OUTPUT"
           echo "Version: '$VER'"
 
-      
       - name: Make docker tag
         id: tag
         run: |
