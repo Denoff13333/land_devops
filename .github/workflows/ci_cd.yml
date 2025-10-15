@@ -16,7 +16,7 @@ env:
   DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
 
 jobs:
- 
+  
   info:
     if: github.event.action != 'closed'
     name: (INF) Print INFORMATION
@@ -81,7 +81,11 @@ jobs:
 
   
   mark_tests_passed:
-    if: ${{ github.event.action != 'closed' && needs.tst_unit.result == 'success' && needs.tst_smoke.result == 'success' && needs.sec_sast.result == 'success' && needs.sec_dast.result == 'success' }}
+    if: ${{ github.event.action != 'closed'
+          && needs.tst_unit.result == 'success'
+          && needs.tst_smoke.result == 'success'
+          && needs.sec_sast.result == 'success'
+          && needs.sec_dast.result == 'success' }}
     name: (LAB) Mark tests passed
     runs-on: ubuntu-latest
     needs: [ tst_unit, tst_smoke, sec_sast, sec_dast ]
@@ -93,7 +97,10 @@ jobs:
           labels: test-passed
 
   mark_sec_passed:
-    if: ${{ github.event.action != 'closed' && needs.sec_sast.result == 'success' && needs.sec_dast.result == 'success' && needs.sec_av.result == 'success' }}
+    if: ${{ github.event.action != 'closed'
+          && needs.sec_sast.result == 'success'
+          && needs.sec_dast.result == 'success'
+          && needs.sec_av.result == 'success' }}
     name: (LAB) Mark security passed
     runs-on: ubuntu-latest
     needs: [ sec_sast, sec_dast, sec_av ]
@@ -208,20 +215,6 @@ jobs:
           git commit -m "docs: update changelog for v$(cat version.txt)" || echo "No changes"
           git push origin HEAD:'${{ github.event.pull_request.head.ref }}'
 
-      - name: Label PR "changelog"
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: changelog
-
-      - name: Upload changelog artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: changelog-${{ github.event.number }}
-          path: CHANGELOG.md
-          if-no-files-found: error
-          retention-days: 7
-
   
   build:
     if: github.event.action != 'closed'
@@ -258,6 +251,22 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.tag.outputs.full }}
+
+      
+      - name: Update DockerHub description and README
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_REPO }}
+          readme-filepath: ./README.md
+
+      
+      - name: Label PR "dockerhub"
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: dockerhub
 
   
   notify:
