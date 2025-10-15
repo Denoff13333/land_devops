@@ -289,28 +289,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Allow PS scripts for this run
-        shell: powershell
-        run: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+      
+        
+        
 
-      - name: Read version (PowerShell)
+      - name: Read version (cmd)
         id: ver
-        shell: powershell
+        shell: cmd
         run: |
-          $ver = (Get-Content -Raw version.txt).Trim()
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "val=$ver"
-          Write-Host "Version: $ver"
+          for /f "usebackq delims=" %%A in ("version.txt") do set VER=%%A
+          echo val=%VER%>> "%GITHUB_OUTPUT%"
+          echo Version: %VER%
 
-      - name: Deploy to self-hosted (PowerShell)
-        shell: powershell
+      - name: Deploy to self-hosted (PowerShell via cmd)
+        shell: cmd
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN:   ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          $ver = "${{ steps.ver.outputs.val }}"
-          $image = "${{ vars.DOCKERHUB_REPO }}:v$ver"
-          Write-Host "Deploying $image ..."
-          .\.github\scripts\deploy.ps1 -Image $image
+          set VER=${{ steps.ver.outputs.val }}
+          set IMAGE=${{ vars.DOCKERHUB_REPO }}:v%VER%
+          echo Deploying %IMAGE% ...
+          powershell -NoProfile -ExecutionPolicy Bypass -File ".github\scripts\deploy.ps1" -Image "%IMAGE%"
 
   release:
     if: github.event.action == 'closed' && github.event.pull_request.merged == true
