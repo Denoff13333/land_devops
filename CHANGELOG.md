@@ -1,3 +1,6 @@
+[0.8.0] - 2025.10.15 13:01:34 feature/test-bump (PR #4)
+
+- chore: bump version to 0.8.0
 [0.7.0] - 2025.10.15 12:40:53 feature/test-bump (PR #4)
 
 - chore: bump version to 0.7.0
