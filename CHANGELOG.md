@@ -1,3 +1,6 @@
+[0.12.0] - 2025.10.15 13:47:41 feature/test-bump (PR #4)
+
+- chore: bump version to 0.12.0
 [0.11.0] - 2025.10.15 13:34:16 feature/test-bump (PR #4)
 
 - chore: bump version to 0.11.0
