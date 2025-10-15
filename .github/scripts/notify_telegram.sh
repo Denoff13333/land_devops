@@ -1,53 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_NAME="${1}"           # e.g. land_devops
-VER="${2}"                 # e.g. 0.17.24
-PR_NUMBER="${3}"           # e.g. 148
-DOCKERHUB_REPO="${4}"      # e.g. denoff1337/land_devops
+BOT="$TELEGRAM_BOT_TOKEN"
+CHAT="$TELEGRAM_CHAT_ID"
 
-BOT_TOKEN="${TELEGRAM_BOT_TOKEN}"
-CHAT_ID="${TELEGRAM_CHAT_ID}"
+PROJECT="${1}"
+VERSION="${2}"
+PR="${3}"
+DOCKER_REPO="${4}"
+TAG="v${VERSION}"
 
-REPO_FULL="${GITHUB_REPOSITORY}"            # e.g. Den0ff13333/land_devops
-OWNER="${REPO_FULL%%/*}"                    # e.g. Den0ff13333
-AUTHOR="${GITHUB_ACTOR:-unknown}"
-DATE_UTC="$(date -u +'%Y.%m.%d  %H:%M:%S')"
-GIT_TAG="v${VER}"
+TEXT="*Новый выпуск изменений*\n\n\
+*Проект:* ${PROJECT}\n\
+*Версия:* ${VERSION}\n\
+*Дата:* $(date '+%Y.%m.%d %H:%M:%S')\n\
+*Автор:* $(git log -1 --pretty=format:'%an')\n\n\
+*Информация о Git-репозитории*\n\
+GIT MR: [${PR}](https://github.com/${GITHUB_REPOSITORY}/pull/${PR})\n\
+GIT TAG: [${TAG}](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG})\n\n\
+*Информация о Docker-репозитории*\n\
+Владелец: ${DOCKER_REPO%%/*}\n\
+Название: ${PROJECT}\n\
+Тег: ${TAG}\n\
+Полное имя: [${DOCKER_REPO}:${TAG}](https://hub.docker.com/r/${DOCKER_REPO})"
 
-PR_LINK="https://github.com/${REPO_FULL}/pull/${PR_NUMBER}"
-TAG_LINK="https://github.com/${REPO_FULL}/releases/tag/${GIT_TAG}"
-REPO_LINK="https://github.com/${REPO_FULL}"
-DH_REPO_LINK="https://hub.docker.com/r/${DOCKERHUB_REPO}"
-IMAGE_FULL="${DOCKERHUB_REPO}:${GIT_TAG}"
 
-read -r -d '' MSG <<EOF
-<b>Новый выпуск изменений</b>
-<b>Проект</b> : <a href="${REPO_LINK}">${REPO_NAME}</a>
-<b>Версия</b> : <code>${VER}</code>
-<b>Дата</b>: <code>${DATE_UTC}</code>
-<b>Автор</b>: ${AUTHOR}
+curl -sS "https://api.telegram.org/bot${BOT}/sendMessage" \
+  -d chat_id="${CHAT}" \
+  -d parse_mode=MarkdownV2 \
+  --data-urlencode "text=${TEXT}" >/dev/null
 
-<b>Информация о Git-репозитории</b>
-<b>GIT MR</b> : <a href="${PR_LINK}">${PR_NUMBER}</a>
-<b>GIT TAG</b>: <a href="${TAG_LINK}">${GIT_TAG}</a>
 
-<b>Информация о Docker-репозитории</b>
-<b>Владелец</b>: ${OWNER}
-<b>Название</b>: ${REPO_NAME}
-<b>Тег</b>: <code>${GIT_TAG}</code>
-<b>Полное имя</b>: <a href="${DH_REPO_LINK}">${IMAGE_FULL}</a>
-EOF
-
-curl -sS "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-  -d chat_id="${CHAT_ID}" \
-  -d parse_mode="HTML" \
-  --data-urlencode text="${MSG}" >/dev/null
-
-if [ -f CHANGELOG.md ]; then
-  curl -sS -F chat_id="${CHAT_ID}" \
-    -F document="@CHANGELOG.md;filename=changelog.md" \
-    "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" >/dev/null
-fi
-
-echo "Telegram notification sent."
+curl -sS -F chat_id="${CHAT}" -F document="@CHANGELOG.md" \
+  "https://api.telegram.org/bot${BOT}/sendDocument" >/dev/null
