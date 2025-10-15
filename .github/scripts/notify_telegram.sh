@@ -10,26 +10,32 @@ PR="${3}"
 DOCKER_REPO="${4}"
 TAG="v${VERSION}"
 
-TEXT="*Новый выпуск изменений*\n\n\
-*Проект:* ${PROJECT}\n\
-*Версия:* ${VERSION}\n\
-*Дата:* $(date '+%Y.%m.%d %H:%M:%S')\n\
-*Автор:* $(git log -1 --pretty=format:'%an')\n\n\
-*Информация о Git-репозитории*\n\
-GIT MR: [${PR}](https://github.com/${GITHUB_REPOSITORY}/pull/${PR})\n\
-GIT TAG: [${TAG}](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG})\n\n\
-*Информация о Docker-репозитории*\n\
-Владелец: ${DOCKER_REPO%%/*}\n\
-Название: ${PROJECT}\n\
-Тег: ${TAG}\n\
-Полное имя: [${DOCKER_REPO}:${TAG}](https://hub.docker.com/r/${DOCKER_REPO})"
+
+TEXT=$(cat <<EOF
+<b>Новый выпуск изменений</b>
+
+<b>Проект:</b> ${PROJECT}
+<b>Версия:</b> ${VERSION}
+<b>Дата:</b> $(date '+%Y.%m.%d %H:%M:%S')
+
+<b>Информация о Git</b>
+MR: <a href="https://github.com/${GITHUB_REPOSITORY}/pull/${PR}">#${PR}</a>
+Tag: <a href="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}">${TAG}</a>
+
+<b>Информация о Docker</b>
+Репозиторий: <a href="https://hub.docker.com/r/${DOCKER_REPO}">${DOCKER_REPO}</a>
+Тег: <code>${TAG}</code>
+Полное имя: <code>${DOCKER_REPO}:${TAG}</code>
+EOF
+)
 
 
-curl -sS "https://api.telegram.org/bot${BOT}/sendMessage" \
+curl -fsS -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
   -d chat_id="${CHAT}" \
-  -d parse_mode=MarkdownV2 \
-  --data-urlencode "text=${TEXT}" >/dev/null
+  -d parse_mode=HTML \
+  --data-urlencode "text=${TEXT}"
 
 
-curl -sS -F chat_id="${CHAT}" -F document="@CHANGELOG.md" \
-  "https://api.telegram.org/bot${BOT}/sendDocument" >/dev/null
+curl -fsS -X POST "https://api.telegram.org/bot${BOT}/sendDocument" \
+  -F chat_id="${CHAT}" \
+  -F document="@CHANGELOG.md"
