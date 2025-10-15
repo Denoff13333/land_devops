@@ -3,7 +3,6 @@ name: ci_cd.yml
 on:
   pull_request:
     branches: [ main ]
-    
     types: [ opened, synchronize, reopened, ready_for_review, closed, labeled, unlabeled ]
 
 permissions:
@@ -17,6 +16,7 @@ env:
   DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
 
 jobs:
+  
   info:
     if: github.event.action != 'closed'
     name: (INF) Print INFORMATION
@@ -27,6 +27,67 @@ jobs:
           echo "From: ${{ github.event.pull_request.head.ref }}"
           echo "To  : ${{ github.base_ref }}"
 
+  
+  tst_unit:
+    if: github.event.action != 'closed'
+    name: (TST) Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Run unit tests (stub) ..."
+          sleep 2
+          echo "OK"
+
+  tst_smoke:
+    if: github.event.action != 'closed'
+    name: (TST) Smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Run smoke tests (stub) ..."
+          sleep 2
+          echo "OK"
+
+  
+  sec_sast:
+    if: github.event.action != 'closed'
+    name: (SEC) / SAST
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Static security scan (stub) ..."
+          sleep 2
+          echo "OK"
+
+  sec_dast:
+    if: github.event.action != 'closed'
+    name: (SEC) / DAST
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Dynamic security scan (stub) ..."
+          sleep 2
+          echo "OK"
+
+  
+  mark_tests_passed:
+    
+    if: ${{ github.event.action != 'closed'
+          && needs.tst_unit.result == 'success'
+          && needs.tst_smoke.result == 'success'
+          && needs.sec_sast.result == 'success'
+          && needs.sec_dast.result == 'success' }}
+    name: (LAB) Mark tests passed
+    runs-on: ubuntu-latest
+    needs: [ tst_unit, tst_smoke, sec_sast, sec_dast ]
+    steps:
+      - name: Add 'test-passed' label to PR
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: test-passed
+
+  
   gates:
     if: github.event.action != 'closed'
     name: (ISC) / collect statuses
@@ -42,6 +103,7 @@ jobs:
           allowed-conclusions: success
           ref: ${{ github.event.pull_request.head.sha }}
 
+  
   version:
     if: github.event.action != 'closed'
     name: (VER) Version UP
@@ -63,7 +125,6 @@ jobs:
           git branch --set-upstream-to="origin/$BR" "$BR" 2>/dev/null || true
           echo "On branch: $(git rev-parse --abbrev-ref HEAD)"
 
-      
       - name: Decide bump type (by PR labels)
         id: decide
         env:
@@ -72,7 +133,6 @@ jobs:
           PR=${{ github.event.pull_request.number }}
           REPO=${{ github.repository }}
 
-          # читаем метки у PR через gh api
           LABELS=$(gh api repos/$REPO/issues/$PR/labels --jq '.[].name' | tr '\n' ' ')
           echo "PR labels: $LABELS"
 
@@ -97,6 +157,7 @@ jobs:
           git commit -m "chore: bump version to $(cat version.txt)" || echo "No changes"
           git push origin HEAD:'${{ github.event.pull_request.head.ref }}'
 
+  
   changelog:
     if: github.event.action != 'closed'
     name: (VER) Changelog UP
@@ -132,6 +193,7 @@ jobs:
           git commit -m "docs: update changelog for v$(cat version.txt)" || echo "No changes"
           git push origin HEAD:'${{ github.event.pull_request.head.ref }}'
 
+  
   build:
     if: github.event.action != 'closed'
     name: (BUILD) / build
@@ -168,6 +230,7 @@ jobs:
           push: true
           tags: ${{ steps.tag.outputs.full }}
 
+  
   notify:
     if: github.event.action != 'closed'
     name: (TG) Notify final
@@ -188,6 +251,7 @@ jobs:
             "${{ github.event.number }}" \
             "${DOCKERHUB_REPO}"
 
+  
   deploy:
     if: false
     name: Deploy / PROD
@@ -199,8 +263,9 @@ jobs:
       - name: Run container
         run: |
           VER=$(tr -d '\r\n[:space:]' < version.txt)
-          bash .github/scripts/deploy.sh "${{ vars.DOCKERHUB_REPO }}:v${VER}"
+          bash .github/scripts/deploy.sh "${{ vars.DO C KERHUB_REPO }}:v${VER}"
 
+  
   release:
     if: github.event.action == 'closed' && github.event.pull_request.merged == true
     name: Deploy / create release
