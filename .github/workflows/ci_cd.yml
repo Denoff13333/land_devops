@@ -301,7 +301,7 @@ jobs:
 
       - name: Read version (pwsh)
         id: ver
-        shell: pwsh
+        shell: powershell
         run: |
           $ver = (Get-Content -Raw version.txt).Trim()
           "val=$ver" >> $env:GITHUB_OUTPUT
