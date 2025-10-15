@@ -127,7 +127,7 @@ jobs:
           allowed-conclusions: success
           ref: ${{ github.event.pull_request.head.sha }}
 
-  
+ 
   version:
     if: github.event.action != 'closed'
     name: (VER) Version UP
@@ -252,7 +252,6 @@ jobs:
           push: true
           tags: ${{ steps.tag.outputs.full }}
 
-      
       - name: Update DockerHub description and README
         uses: peter-evans/dockerhub-description@v3
         with:
@@ -261,7 +260,6 @@ jobs:
           repository: ${{ vars.DOCKERHUB_REPO }}
           readme-filepath: ./README.md
 
-      
       - name: Label PR "dockerhub"
         uses: actions-ecosystem/action-add-labels@v1
         with:
@@ -291,17 +289,33 @@ jobs:
 
   
   deploy:
-    if: false
+    
+    if: >
+      github.event.action != 'closed' &&
+      contains(toJson(github.event.pull_request.labels), 'PROD')
     name: Deploy / PROD
     runs-on: self-hosted
     needs: [ notify ]
     environment: prod
     steps:
       - uses: actions/checkout@v4
-      - name: Run container
+
+      - name: Read version
+        id: ver
+        shell: bash
         run: |
           VER=$(tr -d '\r\n[:space:]' < version.txt)
-          bash .github/scripts/deploy.sh "${{ vars.DOCKERHUB_REPO }}:v${VER}"
+          echo "val=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to self-hosted (PowerShell)
+        shell: pwsh
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN:   ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          $ver = "${{ steps.ver.outputs.val }}"
+          $image = "${{ vars.DOCKERHUB_REPO }}:v$ver"
+          ./.github/scripts/deploy.ps1 -Image $image
 
   
   release:
