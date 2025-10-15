@@ -297,20 +297,31 @@ jobs:
         id: ver
         shell: cmd
         run: |
-          for /f "usebackq delims=" %%A in ("version.txt") do set VER=%%A
-          echo val=%VER%>> "%GITHUB_OUTPUT%"
+          set /p VER=<version.txt
+          set VER=%VER: =%
+          echo val=%VER%>> %GITHUB_OUTPUT%
           echo Version: %VER%
 
-      - name: Deploy to self-hosted (PowerShell via cmd)
+      - name: Deploy to self-hosted (cmd)
         shell: cmd
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN:   ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
+          setlocal enabledelayedexpansion
           set VER=${{ steps.ver.outputs.val }}
-          set IMAGE=${{ vars.DOCKERHUB_REPO }}:v%VER%
-          echo Deploying %IMAGE% ...
-          powershell -NoProfile -ExecutionPolicy Bypass -File ".github\scripts\deploy.ps1" -Image "%IMAGE%"
+          set IMAGE=${{ vars.DOCKERHUB_REPO }}:v!VER!
+          set NAME=land_devops
+          set PORTS=8080:80
+          echo Deploying !IMAGE! ...
+          docker login -u %DOCKERHUB_USERNAME% -p %DOCKERHUB_TOKEN% || echo "docker login skipped/failed (repo may be public)"
+          docker pull !IMAGE!
+          for /f "delims=" %%i in ('docker ps -aq -f "name=!NAME!"') do docker rm -f %%i
+          docker run -d --restart unless-stopped --name !NAME! -p !PORTS! !IMAGE!
+
+          echo ---- CONTAINERS ----
+          docker ps --filter "name=!NAME!" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+          endlocal
 
   release:
     if: github.event.action == 'closed' && github.event.pull_request.merged == true
