@@ -79,7 +79,7 @@ jobs:
           sleep 2
           echo "OK"
 
-  
+ 
   mark_tests_passed:
     if: ${{ github.event.action != 'closed'
           && needs.tst_unit.result == 'success'
@@ -127,7 +127,7 @@ jobs:
           allowed-conclusions: success
           ref: ${{ github.event.pull_request.head.sha }}
 
- 
+  
   version:
     if: github.event.action != 'closed'
     name: (VER) Version UP
@@ -289,7 +289,6 @@ jobs:
 
   
   deploy:
-    
     if: >
       github.event.action != 'closed' &&
       contains(toJson(github.event.pull_request.labels), 'PROD')
@@ -300,12 +299,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read version
+      - name: Read version (pwsh)
         id: ver
-        shell: bash
+        shell: pwsh
         run: |
-          VER=$(tr -d '\r\n[:space:]' < version.txt)
-          echo "val=$VER" >> "$GITHUB_OUTPUT"
+          $ver = (Get-Content -Raw version.txt).Trim()
+          "val=$ver" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $ver"
 
       - name: Deploy to self-hosted (PowerShell)
         shell: pwsh
@@ -315,6 +315,7 @@ jobs:
         run: |
           $ver = "${{ steps.ver.outputs.val }}"
           $image = "${{ vars.DOCKERHUB_REPO }}:v$ver"
+          Write-Host "Deploying $image ..."
           ./.github/scripts/deploy.ps1 -Image $image
 
   
